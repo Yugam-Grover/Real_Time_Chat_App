@@ -5,13 +5,29 @@ const $messageFormInput = document.querySelector("input");
 const $messageFormButton = document.querySelector("button");
 const $locationButton = document.querySelector("#send-location");
 const $messages = document.querySelector("#messages");
+const sidebar = document.querySelector("#sidebar");
 
 const messageTemplate = document.querySelector("#message-template").innerHTML;
 const locationTemplate = document.querySelector("#location-template").innerHTML;
-
+const sidebarTemplate = document.querySelector("#sidebar-template").innerHTML;
 const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true,
 });
+
+const autoScroll = () => {
+  const newMessage = $messages.lastElementChild;
+  const newMessageMargin = parseInt(getComputedStyle(newMessage).marginBottom);
+  const newMessageHeight = newMessage.offsetHeight + newMessageMargin;
+
+  const visibleHeight = $messages.offsetHeight;
+  const containerHeight = $messages.scrollHeight;
+
+  const scrollOffset = $messages.scrollTop + visibleHeight;
+
+  if (containerHeight - newMessageHeight <= scrollOffset) {
+    $messages.scrollTop = containerHeight;
+  }
+};
 
 socket.on("message", (message) => {
   const html = Mustache.render(messageTemplate, {
@@ -20,6 +36,7 @@ socket.on("message", (message) => {
     createdAt: moment(message.createdAt).format("h:mm a"),
   });
   $messages.insertAdjacentHTML("beforeend", html);
+  autoScroll();
 });
 
 socket.on("locationMessage", (url) => {
@@ -29,6 +46,7 @@ socket.on("locationMessage", (url) => {
     createdAt: moment(url.createdAt).format("h:mm a"),
   });
   $messages.insertAdjacentHTML("beforeend", html);
+  autoScroll();
 });
 
 socket.emit("join", { username, room }, (error) => {
@@ -36,6 +54,15 @@ socket.emit("join", { username, room }, (error) => {
     alert(error);
     location.href = "/";
   }
+});
+
+socket.on("room-data", ({ room, users }) => {
+  console.log(room, users);
+  const html = Mustache.render(sidebarTemplate, {
+    room,
+    users,
+  });
+  sidebar.innerHTML = html;
 });
 
 $messageForm.addEventListener("submit", (e) => {
